@@ -10,7 +10,7 @@ fn ffmpeg() -> Command {
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| {
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../apps/open_quartz_slint/runtime/ffmpeg")
+                .join("runtime/ffmpeg")
         });
     let mut command = Command::new(path);
     command
@@ -101,6 +101,12 @@ fn hdr_transfer_is_rejected() {
             "libx264",
             "-color_trc",
             "smpte2084",
+            "-color_primaries",
+            "bt2020",
+            "-colorspace",
+            "bt2020nc",
+            "-movflags",
+            "+write_colr",
             "-pix_fmt",
             "yuv420p",
             "-y",
@@ -139,6 +145,12 @@ fn linear_transfer_is_rejected() {
             "libx264",
             "-color_trc",
             "linear",
+            "-color_primaries",
+            "bt709",
+            "-colorspace",
+            "bt709",
+            "-movflags",
+            "+write_colr",
             "-pix_fmt",
             "yuv420p",
             "-y",

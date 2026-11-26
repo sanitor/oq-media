@@ -31,13 +31,10 @@ jobs:
           $env:Path = "$env:FFMPEG_DIR/bin;$env:Path"
           cargo test --locked --features d3d12 --lib
       - if: runner.os == 'macOS'
-        run: brew install ffmpeg
-      - if: runner.os == 'macOS'
         run: |
           export PKG_CONFIG_PATH="$PWD/runtime/ffmpeg-media/lib/pkgconfig"
           export DYLD_LIBRARY_PATH="$PWD/runtime/ffmpeg-media/lib"
-          export OPEN_QUARTZ_FFMPEG_PATH="$(command -v ffmpeg)"
-          cargo test --locked --features videotoolbox
+          cargo test --locked --features videotoolbox --no-run
   d3d12-hardware:
     if: github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, Windows, openquartz-video-gpu]
@@ -54,3 +51,19 @@ jobs:
           $env:FFMPEG_DIR = "$pwd/runtime/ffmpeg-shared"
           $env:Path = "$env:FFMPEG_DIR/bin;$env:Path"
           cargo test --locked --features d3d12 --test decode_d3d12
+  videotoolbox-hardware:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, macOS, openquartz-video-gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run prepare:sdk
+      - run: |
+          export PKG_CONFIG_PATH="$PWD/runtime/ffmpeg-media/lib/pkgconfig"
+          export DYLD_LIBRARY_PATH="$PWD/runtime/ffmpeg-media/lib"
+          export OPEN_QUARTZ_FFMPEG_PATH="$PWD/runtime/ffmpeg"
+          cargo test --locked --features videotoolbox -- --test-threads=1
