@@ -1,12 +1,18 @@
 # oq-media
 
+面向全平台的 Rust 媒体库，提供按源时间戳访问音视频的统一 API。当前可用原生后端为 Windows D3D12VA 和 macOS VideoToolbox。其他平台尚无原生媒体后端。
+
+Windows 使用 `cargo add oq-media --features d3d12`，macOS 使用 `cargo add oq-media --features videotoolbox`。原生特性需要 FFmpeg SDK。仓库内运行 `npm ci` 和 `npm run prepare:sdk`。Windows 设置 `FFMPEG_DIR` 指向 `runtime/ffmpeg-shared`，并把其 `bin` 加入 PATH。macOS 设置 `PKG_CONFIG_PATH` 指向 `runtime/ffmpeg-media/lib/pkgconfig`。
+
+[维护者发布步骤](RELEASING.md)。
+
 `oq-media`（Rust 导入名 `oq_media`）是在本仓孵化的独立媒体库。`oq` 记录 OpenQuartz 出处，不代表依赖；OpenQuartz 是消费者。公共媒体类型不依赖节点图、Slint 或 wgpu。
 
 当前实现macOS H.264/HEVC文件VideoToolbox硬解、精确source-time cursor，以及Phase5硬件H.264/MP4编码。Session保留stream timebase/start/duration/seekability及original PTS，frame_at_ns选择目标之后第一张presentation surface，顺播复用cursor、反向新epoch seek关键帧并丢preroll；unknown origin/PTS不按FPS猜。FrameLease保留AVFrame/CVPixelBuffer。编码器接受CoreVideo NV12原生surface，不做CPU图像转换；跨平台精确定位/编码、camera、完整统一播放器组件仍未实现。
 
 Phase 4宿主在有界source worker上调用该cursor；媒体库新增`frame_at_ns_cancellable`接收请求局部取消token，取消不污染Session的全局关闭状态。取消按packet/frame/I/O边界协作；正在执行的VideoToolbox原生decode调用仍须安全返回。`VideoToolboxFrame::allocation_size()`报告实际IOSurface分配bytes供宿主按表面身份计费，不读取CPU像素。该数字不包含VTDecompressionSession/driver私有DPB池；不能用FFmpeg pool参数或已保留帧数量宣称整个decoder硬内存上限。窗口、水位、credit、waker和跨阶段调度属于宿主execution，不把NodeId/wgpu/Slint引入oq-media。
 
-Phase6素材消费者为独立OpenQuartz Studio编辑器。`SourceInfo`新增真实codec名称和has_audio（仅探测，不解码音轨），用于H264/HEVC素材预检及“只使用视频”的提示；媒体库原格式/硬件政策不因UI需求收窄。原生preview仍使用同一个FramePipeline/source cursor，完整源时间和编辑器当前限制见[编辑器README](../../apps/open_quartz_video_editor/README.md)。
+Phase6素材消费者为独立OpenQuartz Studio编辑器。`SourceInfo`新增真实codec名称和has_audio（仅探测，不解码音轨），用于H264/HEVC素材预检及“只使用视频”的提示；媒体库原格式/硬件政策不因UI需求收窄。原生preview仍使用同一个FramePipeline/source cursor，完整源时间和编辑器当前限制见[编辑器README](https://github.com/sanitor/oq-studio)。
 
 ## 构建与使用
 
@@ -16,11 +22,11 @@ macOS 的 `videotoolbox` feature 使用固定 ABI 的 FFmpeg 8.1.1 动态 libav�
 node scripts/prepare-media-sdk.mjs
 cargo run -p oq-media --release --features videotoolbox --example decode -- VIDEO.mp4
 cargo test -p oq-media --features videotoolbox --locked
-env OPEN_QUARTZ_FFMPEG_PATH=$PWD/apps/open_quartz_slint/runtime/ffmpeg \
+env OPEN_QUARTZ_FFMPEG_PATH=$PWD/runtime/ffmpeg \
   cargo test -p oq-media --features videotoolbox --locked source_time_access_matches_software_pts_and_frame_markers -- --exact
 ```
 
-SDK 构建脚本、补丁和 LGPL 对应源码分发当前由宿主仓库提供；独立部署仍需配置 libav 的链接和运行库发现。媒体核心没有 OpenQuartz Rust 依赖，但 SDK 准备尚未提取成独立分发工具。
+本仓提供 SDK 构建脚本、补丁和许可说明。第三方 FFmpeg 运行库单独准备。
 
 运行时要求`oq-vt-hw3-metal-encode-r2-audio1`构建标识；旧decode-only hw2、hw1及未修复重排的hw3 SDK拒绝，不保留alias。锁定FFmpeg8.1.1/LGPL-only，保留H.264/HEVC硬件required/Metal输出，启用`h264_videotoolbox`与MP4/MOV mux；回移上游[2da55bf](https://github.com/FFmpeg/FFmpeg/commit/2da55bf59a68801a8157ab141a487196ce3416a8)修正H.264两级B-pyramid被误报一帧重排造成DTS>PTS。编码allow_sw=0/require_sw=0要求硬件，report.hardware来自此硬件必需配置，不是另一次VT属性查询。准备脚本按新identity重建；原源码、两份精确patch/build config/LGPL notices均分发。历史8K节只代表旧hw2测量。
 

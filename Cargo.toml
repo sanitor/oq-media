@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 rust-version = "1.92"
-publish = false
-description = "Timestamp-addressed media with VideoToolbox and D3D12VA decoding"
+publish = ["crates-io"]
+repository = "https://github.com/sanitor/oq-media"
+description = "Cross-platform timestamp-addressed media API with native Windows and macOS backends"
+readme = "README.md"
 
 [features]
 default = []
