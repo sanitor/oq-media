@@ -6,7 +6,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 #[test]
 fn rejects_lossless_h264_profile_before_hardware_decode() {
-    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/white_64x64.mp4");
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/white_64x64.mp4");
     let error = Session::open(fixture).err().expect("unsupported H.264 profile");
     assert_eq!(error.kind, ErrorKind::UnsupportedContent);
 }
