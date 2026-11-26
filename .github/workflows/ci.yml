@@ -1,0 +1,38 @@
+name: Media CI
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --locked
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run prepare:sdk
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:LIBCLANG_PATH = 'C:\Program Files\LLVM\bin'
+          $env:FFMPEG_DIR = "$pwd/runtime/ffmpeg-shared"
+          $env:Path = "$env:FFMPEG_DIR/bin;$env:Path"
+          cargo test --locked --features d3d12
+      - if: runner.os == 'macOS'
+        run: |
+          export PKG_CONFIG_PATH="$PWD/runtime/ffmpeg-media/lib/pkgconfig"
+          export DYLD_LIBRARY_PATH="$PWD/runtime/ffmpeg-media/lib"
+          export OPEN_QUARTZ_FFMPEG_PATH="$PWD/runtime/ffmpeg-media/bin/ffmpeg"
+          cargo test --locked --features videotoolbox
